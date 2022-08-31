@@ -1,0 +1,7 @@
+set JOBS := 1 2 3;
+
+param:		processing 		due:=
+
+	1		100			400
+	2		700			450
+	3		500			650;

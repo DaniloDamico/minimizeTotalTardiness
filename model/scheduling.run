@@ -1,0 +1,14 @@
+reset;
+
+model scheduling.mod;
+data scheduling.dat;
+option solver conopt;
+
+solve;
+
+display TotalTardiness;
+
+display Tardiness;
+display StartingTime;
+display ordering;
+display M;
