@@ -2,12 +2,13 @@ import com.ampl.AMPL;
 import com.ampl.Environment;
 
 import java.io.IOException;
+import java.util.concurrent.TimeoutException;
 
 public class Main {
 
     public static void main(String[] args) throws IOException {
 
-        try (AMPL ampl = new AMPL(new Environment("D:/ampl.mswin64"));) {
+        try (AMPL ampl = new AMPL(new Environment("D:/ampl.mswin64"))) {
 
             ampl.setOption("solver", "cplex");
             String modelDirectory = "./model";
@@ -17,10 +18,10 @@ public class Main {
 
             LawlerAlgorythm solver = new LawlerAlgorythm(ampl);
             solver.solve();
+        } catch (TimeoutException e) {
+            throw new RuntimeException(e);
         }
     }
-
-
 
 
 }

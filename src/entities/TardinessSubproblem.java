@@ -7,7 +7,7 @@ public class TardinessSubproblem {
     Job largestP = null;
     List<Job> afterSigma = null;
 
-    public TardinessSubproblem(List<Job> untilSigma, Job largestP, List<Job> afterSigma){
+    public TardinessSubproblem(List<Job> untilSigma, Job largestP, List<Job> afterSigma) {
         setUntilSigma(untilSigma);
         setLargestP(largestP);
         setAfterSigma(afterSigma);

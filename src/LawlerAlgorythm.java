@@ -1,11 +1,16 @@
+import ampl.DatExtractor;
+import ampl.paramEnum;
 import com.ampl.AMPL;
 import entities.Job;
 import entities.TardinessSubproblem;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeoutException;
 
 /*
-A Dynamic Programming algorythm for the solution of minimum total tardiness as presented in
+A Dynamic Programming algorithm for the solution of minimum total tardiness as presented in
 A "pseudo polynomial" algorithm for sequencing jobs to minimize total tardiness, Lawler (1977)
 */
 
@@ -13,7 +18,7 @@ public class LawlerAlgorythm {
     AMPL ampl;
     List<Job> jobs = new ArrayList<>();
 
-    LawlerAlgorythm(AMPL ampl){
+    LawlerAlgorythm(AMPL ampl) {
 
         this.ampl = ampl;
 
@@ -24,7 +29,11 @@ public class LawlerAlgorythm {
         initializeJobs(paramEnum.DUE, dueData);
     }
 
-    private void initializeJobs(paramEnum dataType, List<Map.Entry<String, Integer>> paramList){
+    LawlerAlgorythm(List<Job> jobList) {
+        this.jobs = jobList;
+    }
+
+    private void initializeJobs(paramEnum dataType, List<Map.Entry<String, Integer>> paramList) {
 
         for (Map.Entry<String, Integer> currEntry : paramList) {
 
@@ -37,11 +46,11 @@ public class LawlerAlgorythm {
                             o -> o.setProcessingTime(currEntry.getValue()));
                 }
 
-            } else{
+            } else {
                 Job newJob = new Job();
                 newJob.setId(currEntry.getKey());
 
-                switch(dataType){
+                switch (dataType) {
                     case DUE -> newJob.setDueDate(currEntry.getValue());
                     case PROCESSING -> newJob.setProcessingTime(currEntry.getValue());
                 }
@@ -54,20 +63,27 @@ public class LawlerAlgorythm {
 
     }
 
-    public void solve(){
+    public long solve() throws TimeoutException { // returns tardiness
         Utils.orderJobsByDueDate(jobs);
         List<Job> optimalSolution = dynamicProgrammingSolve(jobs, 0);
 
-        //TODO move to main controller class
-        System.out.println("Solved!");
+        /*
         System.out.println("Tardiness: " + Utils.computeTardiness(optimalSolution, 0));
         System.out.println("List: ");
         for(Job j: optimalSolution) System.out.println(j.getId());
+         */
+
+        return Utils.computeTardiness(optimalSolution, 0);
     }
 
-    private List<Job> dynamicProgrammingSolve(List<Job> list, int startingTime){
+    private List<Job> dynamicProgrammingSolve(List<Job> list, int startingTime) throws TimeoutException {
 
-        if(list.isEmpty() || list.size() == 1){
+        // interruption response
+        if (Thread.currentThread().isInterrupted()) {
+            throw new TimeoutException();
+        }
+
+        if (list.isEmpty() || list.size() == 1) {
             return list;
         }
 
@@ -82,23 +98,23 @@ public class LawlerAlgorythm {
         List<Integer> deltaList = DeltaOptimization.optimize(list, startingTime);
         //List<Integer> deltaList = new ArrayList<>();
 
-        if(deltaList.isEmpty()){
-            for(int delta = 0; delta<= list.size() - maxProcessing; delta++) // delta >=0 && delta <= jobs.size - maxProcessing
+        if (deltaList.isEmpty()) {
+            for (int delta = 0; delta <= list.size() - maxProcessing; delta++) // delta >=0 && delta <= jobs.size - maxProcessing
                 deltaList.add(delta);
         }
 
         // generate the Tardiness Subproblems
-        for(Integer delta : deltaList){
+        for (Integer delta : deltaList) {
 
             List<Job> untilMaxPlusDelta = new ArrayList<>();  // job da 1 a k + delta (eccetto k)
-            for(int i = 0; i < maxProcessing + delta + 1 && i < list.size(); i++){ // da 1 a k + delta tranne k
-                if(i==maxProcessing)
+            for (int i = 0; i < maxProcessing + delta + 1 && i < list.size(); i++) { // da 1 a k + delta tranne k
+                if (i == maxProcessing)
                     continue;
                 untilMaxPlusDelta.add(list.get(i));
             }
 
             List<Job> afterMaxPlusDelta = new ArrayList<>(); //job k+ delta fino a n
-            for(int j = maxProcessing + delta + 1; j < list.size(); j++){ // da k + delta + 1 a n
+            for (int j = maxProcessing + delta + 1; j < list.size(); j++) { // da k + delta + 1 a n
                 afterMaxPlusDelta.add(list.get(j));
             }
 
@@ -108,7 +124,7 @@ public class LawlerAlgorythm {
 
         // solve the problems recursively
         List<List<Job>> candidatesList = new ArrayList<>();
-        for(TardinessSubproblem subproblem : subproblemsList){
+        for (TardinessSubproblem subproblem : subproblemsList) {
 
             List<Job> currUntilList = dynamicProgrammingSolve(subproblem.getUntilDelta(), startingTime);
             List<Job> currList = new ArrayList<>(currUntilList);
@@ -116,8 +132,8 @@ public class LawlerAlgorythm {
             currList.add(subproblem.getLargestP());
 
             int kCompletionTime = startingTime;
-            for(Job job : currList)
-                kCompletionTime+= job.getProcessingTime();
+            for (Job job : currList)
+                kCompletionTime += job.getProcessingTime();
 
             List<Job> currAfterList = dynamicProgrammingSolve(subproblem.getAfterDelta(), kCompletionTime);
             currList.addAll(currAfterList);
@@ -128,16 +144,16 @@ public class LawlerAlgorythm {
         return findLowestTardinessList(candidatesList, startingTime);
     }
 
-    private List<Job> findLowestTardinessList(List<List<Job>> candidatesList, int startingTime){
+    private List<Job> findLowestTardinessList(List<List<Job>> candidatesList, int startingTime) {
 
         List<Job> optimalList = new ArrayList<>();
         int optimalTardiness = -1;
-        
-        for(List<Job> candidate : candidatesList){
+
+        for (List<Job> candidate : candidatesList) {
 
             int currTardiness = Utils.computeTardiness(candidate, startingTime);
 
-            if(optimalTardiness == -1 || currTardiness < optimalTardiness){
+            if (optimalTardiness == -1 || currTardiness < optimalTardiness) {
                 optimalTardiness = currTardiness;
                 optimalList = candidate;
             }

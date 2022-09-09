@@ -1,3 +1,5 @@
+package ampl;
+
 import com.ampl.AMPL;
 import com.ampl.DataFrame;
 import com.ampl.Parameter;
@@ -9,12 +11,12 @@ import java.util.Map;
 
 public class DatExtractor {
 
-    public static List<Map.Entry<String, Integer>> extract(AMPL ampl, String parName){
+    public static List<Map.Entry<String, Integer>> extract(AMPL ampl, String parName) {
         Parameter parameter = ampl.getParameter(parName);
         DataFrame data = parameter.getValues();
         List<Map.Entry<String, Integer>> dataList = new ArrayList<>();
 
-        for(int i=0; i<data.getNumRows(); i++){
+        for (int i = 0; i < data.getNumRows(); i++) {
             Object[] row = data.getRowByIndex(i);
 
             String jobName = extractName(row[0]);
@@ -26,12 +28,12 @@ public class DatExtractor {
         return dataList;
     }
 
-    public static int extractValue(Double d){
+    public static int extractValue(Double d) {
         return d.intValue();
     }
 
-    public static String extractName(Object name){
-        if(name instanceof Double)
+    public static String extractName(Object name) {
+        if (name instanceof Double)
             return String.valueOf(extractValue((Double) name));
         else
             return name.toString();
